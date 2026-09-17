@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trips</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧭</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <h1 id="site-title">Trips</h1>
+  <p class="subtitle" id="site-subtitle"></p>
+</header>
+
+<main>
+  <div id="trip-grid" class="trip-grid" aria-live="polite"></div>
+  <div id="empty-state" class="empty-state" hidden>
+    <h2>No trips yet</h2>
+    <p>Create your first trip:</p>
+    <pre>python publish.py new "Kyoto, Japan"</pre>
+    <p>then drop photos into the new folder, edit <code>notes.md</code>,
+       and run <code>python publish.py</code>.</p>
+  </div>
+</main>
+
+<footer class="site-footer" id="site-footer"></footer>
+
+<script src="assets/app.js"></script>
+</body>
+</html>

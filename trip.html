@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trip</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧭</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="trip-header">
+  <a class="back-link" href="index.html">&larr; All trips</a>
+  <h1 id="trip-title"></h1>
+  <p class="trip-meta" id="trip-meta"></p>
+</header>
+
+<main class="trip-page">
+  <article class="notes" id="trip-notes"></article>
+  <div id="photo-grid" class="photo-grid"></div>
+</main>
+
+<div class="lightbox" id="lightbox" hidden>
+  <button class="lb-btn lb-close" id="lb-close" aria-label="Close">&times;</button>
+  <button class="lb-btn lb-prev" id="lb-prev" aria-label="Previous photo">&#8249;</button>
+  <button class="lb-btn lb-next" id="lb-next" aria-label="Next photo">&#8250;</button>
+  <figure class="lb-figure">
+    <img id="lb-img" alt="">
+    <figcaption class="lb-bar">
+      <div class="lb-caption" id="lb-caption"></div>
+      <div class="lb-info">
+        <span id="lb-counter"></span>
+        <span id="lb-taken"></span>
+        <a id="lb-download" download>Download original</a>
+      </div>
+    </figcaption>
+  </figure>
+</div>
+
+<script src="assets/marked.min.js"></script>
+<script src="assets/trip.js"></script>
+</body>
+</html>
