@@ -19,6 +19,14 @@ with, what you'd do differently next time. Markdown formatting works:
 
 > Blockquotes are nice for a memory or a quote from a travel companion.
 
+This sample also shows **places**: photos live in the `harbor-town/` and
+`mountains/` subfolders, so the gallery below groups them under headings.
+
+## Places
+
+harbor-town: The Harbor
+mountains: Into the Mountains
+
 ## Photo captions
 
 mountain-dawn.jpg: Up before sunrise — worth every lost minute of sleep

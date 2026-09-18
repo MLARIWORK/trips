@@ -99,8 +99,34 @@ Write your notes, memories, and stories here. Markdown works:
 """
 
 
+def extract_section(body, title):
+    """Pull a '## <title>' section out of the notes body.
+
+    Returns (section_text, body_without_section). The section runs until
+    the next heading or end of file.
+    """
+    m = re.search(rf"^##\s*{title}\s*$", body, re.IGNORECASE | re.MULTILINE)
+    if not m:
+        return "", body
+    rest = body[m.end():]
+    nxt = re.search(r"^#{1,6}\s", rest, re.MULTILINE)
+    if nxt:
+        return rest[:nxt.start()], body[:m.start()] + rest[nxt.start():]
+    return rest, body[:m.start()]
+
+
+def section_lines(text):
+    for line in text.splitlines():
+        line = re.sub(r"<!--.*?-->", "", line).strip()
+        yield re.sub(r"^[-*]\s+", "", line)
+
+
 def parse_notes(path):
-    """Return (meta dict, notes markdown, captions dict) from a notes.md file."""
+    """Parse a notes.md file.
+
+    Returns (meta dict, notes markdown, captions dict,
+    place display names dict, place order list).
+    """
     meta, body = {}, ""
     text = path.read_text(encoding="utf-8")
     m = re.match(r"\s*---\s*\n(.*?)\n---\s*\n?", text, re.DOTALL)
@@ -113,28 +139,25 @@ def parse_notes(path):
     else:
         body = text
 
-    # Pull the "## Photo captions" section out of the visible notes.
+    # "## Photo captions" and "## Places" are data sections, not visible notes.
     captions = {}
-    cap_match = re.search(r"^##\s*photo captions\s*$", body,
-                          re.IGNORECASE | re.MULTILINE)
-    if cap_match:
-        cap_text = body[cap_match.end():]
-        # Captions section runs until the next heading or end of file.
-        next_heading = re.search(r"^#{1,6}\s", cap_text, re.MULTILINE)
-        if next_heading:
-            section = cap_text[:next_heading.start()]
-            body = body[:cap_match.start()] + cap_text[next_heading.start():]
-        else:
-            section = cap_text
-            body = body[:cap_match.start()]
-        for line in section.splitlines():
-            line = re.sub(r"<!--.*?-->", "", line).strip()
-            line = re.sub(r"^[-*]\s+", "", line)
-            cm = re.match(r"(.+?\.[A-Za-z0-9]{2,5})\s*:\s*(.+)$", line)
-            if cm:
-                captions[cm.group(1).strip().lower()] = cm.group(2).strip()
+    cap_text, body = extract_section(body, "photo captions")
+    for line in section_lines(cap_text):
+        cm = re.match(r"(.+?\.[A-Za-z0-9]{2,5})\s*:\s*(.+)$", line)
+        if cm:
+            captions[cm.group(1).strip().lower().replace("\\", "/")] = \
+                cm.group(2).strip()
 
-    return meta, body.strip(), captions
+    place_names, place_order = {}, []
+    places_text, body = extract_section(body, "places")
+    for line in section_lines(places_text):
+        pm = re.match(r"(.+?)\s*:\s*(.+)$", line)
+        if pm:
+            folder = pm.group(1).strip().lower()
+            place_names[folder] = pm.group(2).strip()
+            place_order.append(folder)
+
+    return meta, body.strip(), captions, place_names, place_order
 
 
 # ---------------------------------------------------------------- photos
@@ -180,11 +203,17 @@ def generate_derivative(src, dest, max_dim, quality):
 def process_trip(trip_dir):
     """Process one trip folder; returns the manifest entry."""
     slug = trip_dir.name
-    photos_src = sorted(
-        [p for p in trip_dir.iterdir()
-         if p.is_file() and p.suffix.lower() in IMAGE_EXTS],
-        key=lambda p: p.name.lower())
-    if not photos_src:
+    # Photos directly in the trip folder are ungrouped; photos in a
+    # subfolder belong to that "place" (a stop within the trip).
+    photo_sources = []
+    for entry in sorted(trip_dir.iterdir(), key=lambda p: p.name.lower()):
+        if entry.is_file() and entry.suffix.lower() in IMAGE_EXTS:
+            photo_sources.append((entry, ""))
+        elif entry.is_dir() and not entry.name.startswith("."):
+            for sub in sorted(entry.iterdir(), key=lambda p: p.name.lower()):
+                if sub.is_file() and sub.suffix.lower() in IMAGE_EXTS:
+                    photo_sources.append((sub, entry.name))
+    if not photo_sources:
         return None
 
     notes_path = trip_dir / "notes.md"
@@ -196,20 +225,21 @@ def process_trip(trip_dir):
                                   date=datetime.now().strftime("%Y-%m-%d")),
             encoding="utf-8")
         print(f"  created notes template: trips/{slug}/notes.md")
-    meta, notes_md, captions = parse_notes(notes_path)
+    meta, notes_md, captions, place_names, place_order = parse_notes(notes_path)
 
     out_dir = MEDIA_DIR / slug
     expected_media = set()
     photos = []
     generated = 0
 
-    for src in photos_src:
+    for src, place in photo_sources:
         if src.suffix.lower() in (".heic", ".heif") and not HEIC_OK:
             print(f"  WARNING: skipping {src.name} -- install pillow-heif "
                   f"for HEIC support (pip install pillow-heif)")
             continue
-        thumb = out_dir / media_name(src.name, "t")
-        web = out_dir / media_name(src.name, "w")
+        rel = f"{place}/{src.name}" if place else src.name
+        thumb = out_dir / media_name(rel, "t")
+        web = out_dir / media_name(rel, "w")
         expected_media.update({thumb.name, web.name})
 
         try:
@@ -226,10 +256,12 @@ def process_trip(trip_dir):
 
         photos.append({
             "name": src.name,
-            "original": f"trips/{slug}/{src.name}",
+            "place_key": place,
+            "original": f"trips/{slug}/{rel}",
             "thumb": f"media/{slug}/{thumb.name}",
             "web": f"media/{slug}/{web.name}",
-            "caption": captions.get(src.name.lower(), ""),
+            "caption": captions.get(rel.lower(),
+                                    captions.get(src.name.lower(), "")),
             "taken": taken.strftime("%Y-%m-%d %H:%M") if taken else "",
             "bytes": src.stat().st_size,
             "w": width,
@@ -246,7 +278,35 @@ def process_trip(trip_dir):
                 stale.unlink()
                 print(f"  removed stale derivative: {stale.name}")
 
-    photos.sort(key=lambda p: (p["taken"] or "9999", p["name"].lower()))
+    # Order places: ungrouped photos first, then the "## Places" section's
+    # order, then any remaining places chronologically by earliest photo.
+    earliest = {}
+    for p in photos:
+        k = p["place_key"]
+        earliest[k] = min(earliest.get(k, "9999"), p["taken"] or "9999")
+    folders = [k for k in earliest if k]
+    listed = []
+    for wanted in place_order:
+        match = next((f for f in folders if f.lower() == wanted), None)
+        if match and match not in listed:
+            listed.append(match)
+    rest = sorted((f for f in folders if f not in listed),
+                  key=lambda f: (earliest[f], f.lower()))
+    rank = {f: i for i, f in enumerate(([""] if "" in earliest else [])
+                                       + listed + rest)}
+    photos.sort(key=lambda p: (rank[p["place_key"]],
+                               p["taken"] or "9999", p["name"].lower()))
+
+    def display_name(folder):
+        if folder.lower() in place_names:
+            return place_names[folder.lower()]
+        pretty = re.sub(r"^\d+[-_ ]*", "", folder)
+        return pretty.replace("-", " ").replace("_", " ").strip().title() \
+            or folder
+
+    for p in photos:
+        key = p.pop("place_key")
+        p["place"] = display_name(key) if key else ""
 
     # Trip sort date: front matter > earliest photo > folder name > today.
     sort_date = ""
@@ -261,9 +321,15 @@ def process_trip(trip_dir):
         fm = re.match(r"^(\d{4}-\d{2}(-\d{2})?)", slug)
         sort_date = fm.group(1) if fm else datetime.now().strftime("%Y-%m-%d")
 
-    cover_name = meta.get("cover", "").strip().lower()
-    cover = next((p for p in photos if p["name"].lower() == cover_name),
-                 photos[0])
+    # Cover can be a bare filename or "place/filename".
+    cover_name = meta.get("cover", "").strip().lower().replace("\\", "/")
+    cover = photos[0]
+    if cover_name:
+        cover = next(
+            (p for p in photos
+             if p["name"].lower() == cover_name
+             or p["original"].lower().endswith("/" + cover_name)),
+            photos[0])
 
     if generated:
         print(f"  {slug}: {len(photos)} photos, "

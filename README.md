@@ -15,7 +15,8 @@ python publish.py new "Kyoto, Japan"
 This creates `trips/2026-09-kyoto-japan/` with a `notes.md` template. Then:
 
 1. **Copy your photos** into that folder (JPG, PNG, HEIC, WebP, TIFF all
-   work). Originals are never modified or recompressed.
+   work). Originals are never modified or recompressed. To group photos by
+   place within the trip, put them in subfolders — see "Places" below.
 2. **Edit `notes.md`** — dates, location, notes, memories, and photo
    captions (see format below).
 3. **Publish:**
@@ -60,6 +61,35 @@ IMG_0080.jpg: Best bowl of ramen of the entire trip
 The "Photo captions" section is optional and doesn't appear in the notes —
 captions show up under each photo in the lightbox. Photos are ordered by the
 date they were taken (from EXIF), falling back to filename.
+
+## Places (grouping photos within a trip)
+
+Put photos in subfolders of the trip to group them by place:
+
+```
+trips/2024-05-japan/
+├── notes.md
+├── kyoto/          <- shown as "Kyoto"
+├── tokyo/          <- shown as "Tokyo"
+└── IMG_0001.jpg    <- ungrouped photos appear first, with no heading
+```
+
+The trip page shows each place as a headed section, and the lightbox tags
+every photo with its place. Folder names become headings automatically
+("old-town" -> "Old Town"); to override the display names or the order,
+add a "## Places" section to notes.md:
+
+```markdown
+## Places
+
+kyoto: Kyoto — temples & alleys
+tokyo: Tokyo
+```
+
+Places are otherwise ordered by when their earliest photo was taken. If two
+places contain a photo with the same filename, caption it as
+`place/filename: caption`; bare filenames work whenever they're unambiguous.
+`cover:` accepts both forms too.
 
 ## How it works
 

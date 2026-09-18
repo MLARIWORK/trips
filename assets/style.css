@@ -185,10 +185,19 @@ main {
   font-size: 0.9em;
 }
 
+.place-heading {
+  font-size: 1.45rem;
+  margin: 36px 0 14px;
+}
+
+.photo-sections > .photo-grid:first-child,
+#photo-sections > .photo-grid:first-child { margin-top: 8px; }
+
 .photo-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: 10px;
+  margin-bottom: 8px;
 }
 
 .photo-grid button {

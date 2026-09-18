@@ -29,9 +29,23 @@
     }
   }
 
-  // ---- photo grid ----
-  const grid = document.getElementById("photo-grid");
+  // ---- photo grid, grouped by place ----
+  const sections = document.getElementById("photo-sections");
+  let grid = null;
+  let lastPlace = null;
   trip.photos.forEach((photo, i) => {
+    if (grid === null || photo.place !== lastPlace) {
+      if (photo.place) {
+        const heading = document.createElement("h2");
+        heading.className = "place-heading";
+        heading.textContent = photo.place;
+        sections.append(heading);
+      }
+      grid = document.createElement("div");
+      grid.className = "photo-grid";
+      sections.append(grid);
+      lastPlace = photo.place;
+    }
     const btn = document.createElement("button");
     btn.type = "button";
     btn.addEventListener("click", () => openLightbox(i));
@@ -68,7 +82,7 @@
     lbCaption.textContent = photo.caption;
     lbCaption.style.display = photo.caption ? "" : "none";
     lbCounter.textContent = `${current + 1} / ${trip.photos.length}`;
-    lbTaken.textContent = photo.taken;
+    lbTaken.textContent = [photo.place, photo.taken].filter(Boolean).join(" · ");
     lbDownload.href = encodeURI(photo.original);
     lbDownload.setAttribute("download", photo.name);
     lbDownload.textContent = `Download original (${humanSize(photo.bytes)})`;
